@@ -1,8 +1,6 @@
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from app.routers import chatbot
 
 app = FastAPI()
 
-@app.get("/")
-def read_root():
-    return {"message": "¡Hola! El chatbot está funcionando."}
+app.include_router(chatbot.router)
