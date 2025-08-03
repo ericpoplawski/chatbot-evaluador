@@ -7,6 +7,7 @@ class Question(BaseModel):
     topic: str
 
 class StudentAnswer(BaseModel):
+    session_id: str
     question_id: int
     answer: str
 
