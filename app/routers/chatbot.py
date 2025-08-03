@@ -6,5 +6,4 @@ router = APIRouter()
 
 @router.post("/chat", response_model=QuestionFeedback)
 def chat(answer: StudentAnswer):
-    feedback = evaluate_answer(answer)
-    return feedback
+    return evaluate_answer(answer)
