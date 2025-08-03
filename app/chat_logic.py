@@ -1,4 +1,4 @@
-from models import Question, StudentAnswer, QuestionFeedback
+from app.models.schemas import Question, StudentAnswer, QuestionFeedback
 
 # Sample questions
 QUESTIONS = [
