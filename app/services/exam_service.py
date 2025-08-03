@@ -1,6 +1,6 @@
-from app.models.schemas import Question, StudentAnswer, QuestionFeedback
+from app.models.schemas import Question, StudentAnswer, QuestionFeedback, FinalGrade
 from app.services.session_state import get_session
-from typing import Optional
+from typing import List, Optional, Union
 
 # Base de preguntas (mock)
 questions_db = [
@@ -20,16 +20,12 @@ correct_answers = {
     5: "Liberate Western Europe",
 }
 
-# Lógica para corregir la respuesta del alumno con manejo de sesión
-def evaluate_answer(answer: StudentAnswer) -> QuestionFeedback:
+# Evaluación con sesiones y devolución de nota final
+def evaluate_answer(answer: StudentAnswer) -> Union[QuestionFeedback, FinalGrade]:
     session = get_session(answer.session_id)
 
     if session is None or session.finished:
-        return QuestionFeedback(
-            is_correct=False,
-            explanation="Invalid or finished session.",
-            next_question=None
-        )
+        return FinalGrade(score=session.current_score if session else 0, comments="Session is invalid or already completed.")
 
     if answer.question_id in session.answered_questions:
         return QuestionFeedback(
@@ -57,6 +53,19 @@ def evaluate_answer(answer: StudentAnswer) -> QuestionFeedback:
 
     if next_question is None:
         session.finished = True
+        total = len(questions_db)
+        score_percent = (session.current_score / total) * 100
+
+        comment = (
+            "Excellent!" if score_percent >= 80 else
+            "Good job, but review some topics." if score_percent >= 50 else
+            "Needs improvement. Review key concepts."
+        )
+
+        return FinalGrade(
+            score=score_percent,
+            comments=comment
+        )
 
     return QuestionFeedback(
         is_correct=is_correct,

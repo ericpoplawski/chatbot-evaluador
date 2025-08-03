@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from typing import Union
 
 class Question(BaseModel):
     id: int
@@ -19,3 +20,5 @@ class QuestionFeedback(BaseModel):
 class FinalGrade(BaseModel):
     score: float
     comments: Optional[str] = None
+
+ChatResponse = Union[QuestionFeedback, FinalGrade]
