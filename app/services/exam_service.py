@@ -1,5 +1,6 @@
-from app.models.schemas import Question, StudentAnswer, QuestionFeedback
-from typing import List, Optional
+from app.models.schemas import Question, StudentAnswer, QuestionFeedback, FinalGrade
+from app.services.session_state import get_session
+from typing import List, Optional, Union
 
 # Base de preguntas (mock)
 questions_db = [
@@ -19,27 +20,58 @@ correct_answers = {
     5: "Liberate Western Europe",
 }
 
-# Lógica para corregir la respuesta del alumno
-def evaluate_answer(answer: StudentAnswer) -> QuestionFeedback:
+# Evaluación con sesiones y devolución de nota final
+def evaluate_answer(answer: StudentAnswer) -> Union[QuestionFeedback, FinalGrade]:
+    session = get_session(answer.session_id)
+
+    if session is None or session.finished:
+        return FinalGrade(score=session.current_score if session else 0, comments="Session is invalid or already completed.")
+
+    if answer.question_id in session.answered_questions:
+        return QuestionFeedback(
+            is_correct=False,
+            explanation="This question has already been answered.",
+            next_question=None
+        )
+
+    session.answered_questions.append(answer.question_id)
+
     correct = correct_answers.get(answer.question_id)
     is_correct = correct.lower() in answer.answer.lower()
 
     current_question = next((q for q in questions_db if q.id == answer.question_id), None)
-    
+
     if is_correct:
+        session.current_score += 1
         next_question = get_next_question(after_id=answer.question_id)
-        return QuestionFeedback(
-            is_correct=True,
-            explanation="Correct!",
-            next_question=next_question
-        )
+        explanation = "Correct!"
     else:
-        follow_up = get_question_by_topic(current_question.topic, exclude_id=answer.question_id)
-        return QuestionFeedback(
-            is_correct=False,
-            explanation=f"Incorrect. The correct answer was: {correct}.",
-            next_question=follow_up
+        topic = current_question.topic
+        session.errors_by_topic[topic] = session.errors_by_topic.get(topic, 0) + 1
+        next_question = get_question_by_topic(topic, exclude_id=answer.question_id)
+        explanation = f"Incorrect. The correct answer was: {correct}."
+
+    if next_question is None:
+        session.finished = True
+        total = len(questions_db)
+        score_percent = (session.current_score / total) * 100
+
+        comment = (
+            "Excellent!" if score_percent >= 80 else
+            "Good job, but review some topics." if score_percent >= 50 else
+            "Needs improvement. Review key concepts."
         )
+
+        return FinalGrade(
+            score=score_percent,
+            comments=comment
+        )
+
+    return QuestionFeedback(
+        is_correct=is_correct,
+        explanation=explanation,
+        next_question=next_question
+    )
 
 def get_next_question(after_id: int) -> Optional[Question]:
     for q in questions_db:
