@@ -59,12 +59,25 @@ def evaluate_answer(answer: StudentAnswer) -> Union[QuestionFeedback, FinalGrade
         return FinalGrade(score=session.current_score if session else 0, comments="Session is invalid or already completed.")
 
     if answer.question_id in session.answered_questions:
-        return QuestionFeedback(
-            is_correct=False,
-            explanation="This question has already been answered.",
-            next_question=None,
-            next_action_comment="Please continue with a new question."
-        )
+        next_question = get_random_question_by_other_topic("", session.answered_questions)
+
+        if next_question:
+            return QuestionFeedback(
+                is_correct=False,
+                explanation="This question has already been answered.",
+                next_question=next_question,
+                next_action_comment="That question was already answered. Here's a new one to continue."
+            )
+        else:
+            session.finished = True
+            total = len(questions_db)
+            score_percent = (session.current_score / total) * 100
+            feedback = (
+                "Excellent!" if score_percent >= 80 else
+                "Good job, but review some topics." if score_percent >= 50 else
+                "Needs improvement. Review key concepts."
+            )
+            return FinalGrade(score=score_percent, comments=feedback)
 
     session.answered_questions.append(answer.question_id)
 
@@ -121,4 +134,3 @@ def get_random_question_by_topic(topic: str, exclude_ids: List[int]) -> Optional
 def get_random_question_by_other_topic(current_topic: str, exclude_ids: List[int]) -> Optional[Question]:
     candidates = [q for q in questions_db if q.topic != current_topic and q.id not in exclude_ids]
     return random.choice(candidates) if candidates else None
-
