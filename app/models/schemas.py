@@ -16,6 +16,7 @@ class QuestionFeedback(BaseModel):
     is_correct: bool
     explanation: Optional[str] = None
     next_question: Optional[Question] = None
+    next_action_comment: Optional[str] = None
 
 class FinalGrade(BaseModel):
     score: float
